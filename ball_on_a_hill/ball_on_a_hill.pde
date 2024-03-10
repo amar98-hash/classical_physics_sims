@@ -85,7 +85,7 @@ void draw() {
   background(0);
   //fill(255, 204);
 
-  dt=1;
+  dt=0.01;
 
 
 
