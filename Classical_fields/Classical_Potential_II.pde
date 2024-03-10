@@ -10,7 +10,6 @@ float P[][] = new float[N][N];
 
 float dt=0.0, maxPot=0.0, lim=1000.0;
 
-
 class vec {
   float x = 0.0;
   float y = 0.0;
@@ -29,6 +28,8 @@ vec [] pos_vec = new vec[M];
 vec [] vel_vec = new vec[M];
 vec [] acc_vec = new vec[M];
 
+vec [][] color_vec  = new vec[N][N];
+
 
 void setup() {
   size(600, 600);
@@ -44,6 +45,7 @@ void setup() {
     for (int j = 0; j<N; j++) {
 
       F[i][j]= new vec(0.0, 0.0, 0.0);
+      color_vec[i][j]= new vec(0.0, 0.0, 0.0);
     }
   }
 
@@ -51,22 +53,33 @@ void setup() {
   println(maxPot);
 }
 
+
+
+
+
+
+
 void draw() {
   background(0);
   //fill(255, 204);
 
   dt=0.1;
 
-
-
-
-
   Potential(pos_vec[0].x, pos_vec[0].y);
   Force();
-  ForceField();
+  ForceField(15);
   solver();
-  //particle();
+  colorMap(false);
 }
+
+
+
+
+
+
+
+
+
 
 void Potential(float y0, float x0) {
   float N_ = N, p;
@@ -80,33 +93,42 @@ void Potential(float y0, float x0) {
 }
 
 void Force() {
-  float N_ = N, p, theta=0.0;
+  float N_ = N, p, theta=0.0, FMagSq=0.0;
   for (int j=1; j<N-1; j++) {
     for (int i=1; i<N-1; i++) {
       F[i][j].x=-(P[i+1][j]-P[i][j]);
       F[i][j].y=-(P[i][j+1]-P[i][j]);
+      
+      FMagSq=sqrt(pow(F[i][j].x, 2)+pow(F[i][j].y, 2));
+      
+      F[i][j].x= F[i][j].x/FMagSq;
+      F[i][j].y= F[i][j].y/FMagSq;
+      
 
-      if (pow(F[i][j].x, 2)+pow(F[i][j].y, 2)>lim) {
-        theta= atan2(F[i][j].y, F[i][j].x);
-        F[i][j].x=20*cos(theta)  ;
-        F[i][j].y= 20*sin(theta);
-      }
+      
     }
   }
 }
 
-void particle() {
+void colorMap(boolean render) {
   // Loop through every pixel
   for (int i = 0; i < N; i++) {
     for (int j = 0; j < N; j++) {
       // Create a grayscale color based on random number
-      color c = color(255-255*60/(P[i][j]), 0.0, 255*60/(P[i][j]));
+      color_vec[i][j].x = 255-255*60/(P[i][j]); //red
+      color_vec[i][j].y = 0.0; // green;
+      color_vec[i][j].z = 255*60/(P[i][j]);  //blue
+      if(render==true){
+      color c = color(color_vec[i][j].x, color_vec[i][j].y, color_vec[i][j].z);
       // Set pixel at that location to random color
       //println(255*60/(P[i][j]),0.0, 255*abs(1-60/(P[i][j])));
-      pixels[j+i*N] = c;
+      
+          pixels[j+i*N] = c;}
     }
   }
-  updatePixels();
+  if(render==true){    
+      updatePixels();
+  }
 }
 
 
@@ -157,17 +179,23 @@ void solver() {
   //println(pos_vec[i].x, pos_vec[i].y, pos_vec[i].z );
 }
 
-void ForceField() {
+void ForceField(float scale) {
 
-
+  int R=0, G=0, B=0;
 
   for (int j = 0; j < N; j=j+step) {
     for (int i = 0; i < N; i=i+step) {
 
       //noFill();
-      //strokeWeight(2);
-      stroke(255);
-      drawArrow(j, i, j+ F[i][j].y, i+F[i][j].x);
+      strokeWeight(2);
+      R=int(color_vec[i][j].x);
+      G=0;
+      B=int(color_vec[i][j].z);
+
+      stroke(R,G,B);
+      //println(color_vec[i][j].x, 0.0, color_vec[i][j].z);
+
+      drawArrow(j, i, j+ scale*F[i][j].y, i+scale*F[i][j].x);
       //stroke(0,0,255);
       //drawArrow(pos_vec[i].x, pos_vec[i].y,pos_vec[i].x+ 5*vel_vec[i].x,pos_vec[i].y+5*vel_vec[i].y);
       //noStroke();
@@ -175,6 +203,7 @@ void ForceField() {
       //fill(0,255,0);
       //strokeCap(ROUND);
       //strokeWeight(100);
+      noStroke();
     }
   }
 }
