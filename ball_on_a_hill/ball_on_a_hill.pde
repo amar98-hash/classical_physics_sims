@@ -4,15 +4,19 @@
  * Moving the mouse changes the position and size of each box.
  */
 
-int N =600, M=2, step=20;
+int N =600, M=4000, step=20;
 
 float P[][] = new float[N][N];
+float H[][] = new float[N][N];
+
+
+float hill2D[][] = new float[N][N];
 
 float dt=0.0, maxPot=0.0, lim=1000.0;
 
 float xoff = 0;
 
-float R=0.99;
+float R=1, radius=2.0;
 
 class vec {
   float x = 0.0;
@@ -31,6 +35,7 @@ vec [][] F = new vec[N][N];
 vec [] pos_vec = new vec[M];
 vec [] vel_vec = new vec[M];
 vec [] acc_vec = new vec[M];
+float [] mass = new float[M];
 
 vec [][] color_vec  = new vec[N][N];
 
@@ -42,10 +47,12 @@ void setup() {
   loadPixels();
 
   for (int i = 0; i<M; i++) {
-    pos_vec[i]= new vec(300,100,0);
+    pos_vec[i]= new vec(noise(i)*600,100,0);
     //vel_vec[i]= new vec(0.0,0.0, 0.0);
     vel_vec[i]= new vec(0.0, 0.0, 0.0);
     acc_vec[i]= new vec(0.0, 0.0, 0.0);
+    
+    mass[i] = 1.0;//20*noise(i);
     
   }
   
@@ -78,19 +85,22 @@ void draw() {
   background(0);
   //fill(255, 204);
 
-  dt=0.4;
+  dt=1;
 
 
- terrain(true);
-  
-  Potential(0.0, 600.0);
+
+  terrain2D();
+  //Potential(0.0, 600.0);
+  //Potential_hill();
   Force();
-  //ForceField(15);
+  //
   solver();
-  colorMap(false);
+  //colorMap(true);
+  //ForceField(15);
+   
   
   
-  drawObject(12);
+  drawObject();
 }
 
 
@@ -119,13 +129,42 @@ void terrain(boolean drawHill){
 }
 
 
+void terrain2D(){
+  float n=0.0, n1=0.0, xoff=0.0, yoff=0.0, scale=  200.0;
+  for(int i=0;i<N;i++){
+    
+    for(int j=0;j<N;j++){
+    
+       n1  = noise(i/scale,j/scale);
+       //println(n1);
+       hill2D[i][j]= 255*n1;
+    
+    }
+  }
+}
+
+
+
+
 void Potential(float x0, float y0) {
   float N_ = N, p;
   // i index is y axis.
   for (int i=0; i<N; i++) {
     for (int j=0; j<N; j++) {
-      P[i][j]=265*float(i)/N_;
+      P[i][j]=255*float(i)/N_;
       //println(i, j, abs(P[j][i]));
+    }
+  }
+}
+
+void Potential_hill(){
+  float N_ = N, p;
+  for (int i=0; i<N; i++) {
+    for (int j=0; j<N; j++){
+       
+      H[i][j] = 255*exp(-pow(i-hill[j].y,2)/1000.0);
+     // println(H[i][j]);
+
     }
   }
 }
@@ -134,8 +173,11 @@ void Force() {
   float N_ = N, p, theta=0.0, FMagSq=0.0;
   for (int j=1; j<N-1; j++) {
     for (int i=1; i<N-1; i++) {
-      F[i][j].x=(P[i+1][j]-P[i][j]);
-      F[i][j].y=(P[i][j+1]-P[i][j]);
+      //F[i][j].x=(P[i+1][j]-P[i][j])-(H[i+1][j]-H[i][j]);
+      //F[i][j].y=(P[i][j+1]-P[i][j])-(H[i][j+1]-H[i][j]);
+      
+      F[i][j].x = hill2D[i+1][j]-hill2D[i][j];
+      F[i][j].y = hill2D[i][j+1]-hill2D[i][j];
       
       FMagSq=sqrt(pow(F[i][j].x, 2)+pow(F[i][j].y, 2));
       
@@ -148,14 +190,16 @@ void Force() {
   }
 }
 
+
+
 void colorMap(boolean render) {
   // Loop through every pixel
   for (int i = 0; i < N; i++) {
     for (int j = 0; j < N; j++) {
       // Create a grayscale color based on random number
-      color_vec[i][j].x = (P[i][j]); //red
+      color_vec[i][j].x = (hill2D[i][j]); //red
       color_vec[i][j].y = 0.0; // green;
-      color_vec[i][j].z = 255-(P[i][j]);  //blue
+      color_vec[i][j].z = 255-(hill2D[i][j]);  //blue
       if(render==true){
       color c = color(color_vec[i][j].x, color_vec[i][j].y, color_vec[i][j].z);
       // Set pixel at that location to random color
@@ -187,14 +231,15 @@ void solver() {
     //println(vel_vec[i].x, vel_vec[i].y, vel_vec[i].z );
 
     // if(!dragging){
-
-    //acc_vec[i].x= F[300][ceil(pos_vec[i].x)].x;
-    acc_vec[i].y= 9.8*F[ceil(pos_vec[i].y)][200].x;
     posIdx_x= ceil(pos_vec[i].x);
    
     posIdx_y=ceil(pos_vec[i].y);
      
-    println(hill[posIdx_x].y);
+
+    acc_vec[i].x= 1/mass[i]*F[posIdx_y][posIdx_x].y;
+    acc_vec[i].y= 1/mass[i]*F[posIdx_y][posIdx_x].x;
+    
+   // println(hill[posIdx_x].y);
  
 
     vel_vec[i].x=vel_vec[i].x+acc_vec[i].x*dt;
@@ -207,18 +252,26 @@ void solver() {
     pos_vec[i].x=pos_vec[i].x+vel_vec[i].x*dt;
 
     pos_vec[i].y=pos_vec[i].y+vel_vec[i].y*dt;
-    if (pos_vec[i].y>(hill[posIdx_x].y-6)) {
-      pos_vec[i].y=hill[posIdx_x].y-7;
+    if (pos_vec[i].y>(hill[posIdx_x].y-radius/2.0)) {
+      pos_vec[i].y=hill[posIdx_x].y-radius/2.0-1;
       vel_vec[i].y=-R*vel_vec[i].y;
-      vel_vec[i].x=random(-20,20);
+      //vel_vec[i].x=random(-20,20);
     }
-    if (pos_vec[i].x>600-6) {
-       pos_vec[i].x=600-7;
+    else if(pos_vec[i].y<radius/2.0)
+    {
+      pos_vec[i].y= radius/2.0+1;
+      vel_vec[i].y=-R*vel_vec[i].y;
+      
+    }
+    
+    
+    if (pos_vec[i].x>600-radius/2.0) {
+       pos_vec[i].x=600-radius/2.0-1;
       vel_vec[i].x=-R*vel_vec[i].x;
       //vel_vec[i].x=20*noise(float(i),-1,1);
     }
-    else if(pos_vec[i].x<6){
-       pos_vec[i].x=7;
+    else if(pos_vec[i].x<radius/2.0){
+       pos_vec[i].x=radius/2.0+1;
       
       vel_vec[i].x=-R*vel_vec[i].x;
       //vel_vec[i].x=20*noise(float(i),-1,1);
@@ -248,6 +301,7 @@ void ForceField(float scale) {
       B=int(color_vec[i][j].z);
 
       stroke(R,G,B);
+      stroke(255);
       //println(color_vec[i][j].x, 0.0, color_vec[i][j].z);
 
       drawArrow(j, i, j+ scale*F[i][j].y, i+scale*F[i][j].x);
@@ -263,7 +317,7 @@ void ForceField(float scale) {
   }
 }
 
-void drawObject(float radius){
+void drawObject(){
 
   for(int i=0;i<M;i++){
     stroke(200);
